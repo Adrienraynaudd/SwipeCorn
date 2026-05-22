@@ -2,15 +2,9 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { saveSwipeInputSchema } from "@/lib/validation";
 
-type SaveSwipeInput = {
-    tmdbId: number;
-    liked: boolean;
-    title?: string;
-    posterPath?: string | null;
-};
-
-export async function saveSwipe(input: SaveSwipeInput) {
+export async function saveSwipe(input: unknown) {
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -18,36 +12,32 @@ export async function saveSwipe(input: SaveSwipeInput) {
         throw new Error("Non authentifié");
     }
 
-    if (!Number.isInteger(input.tmdbId) || input.tmdbId <= 0) {
-        throw new Error("Film invalide");
+    const parsedInput = saveSwipeInputSchema.safeParse(input);
+    if (!parsedInput.success) {
+        throw new Error(parsedInput.error.issues[0]?.message ?? "Payload invalide");
     }
 
-    const title = input.title?.trim();
-    const poster = input.posterPath?.trim() || null;
-
-    if (input.liked && !title) {
-        throw new Error("Titre invalide");
-    }
+    const { liked, posterPath: poster, title, tmdbId } = parsedInput.data;
 
     await db.$transaction(async (tx) => {
         await tx.swipe.upsert({
             where: {
                 userId_tmdbId: {
                     userId,
-                    tmdbId: input.tmdbId,
+                    tmdbId,
                 },
             },
             create: {
                 userId,
-                tmdbId: input.tmdbId,
-                liked: input.liked,
+                tmdbId,
+                liked,
             },
             update: {
-                liked: input.liked,
+                liked,
             },
         });
 
-        if (!input.liked) {
+        if (!liked) {
             return;
         }
 
@@ -55,12 +45,12 @@ export async function saveSwipe(input: SaveSwipeInput) {
             where: {
                 userId_tmdbId: {
                     userId,
-                    tmdbId: input.tmdbId,
+                    tmdbId,
                 },
             },
             create: {
                 userId,
-                tmdbId: input.tmdbId,
+                tmdbId,
                 title: title!,
                 poster,
             },

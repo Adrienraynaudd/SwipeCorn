@@ -4,20 +4,22 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getMovieDetails } from "@/lib/tmdb";
+import { onboardingMoviesSchema } from "@/lib/validation";
 
 export async function saveOnboardingMovies(formData: FormData) {
     const session = await auth();
     if (!session?.user?.id) throw new Error("Non authentifié");
 
-    const ids = [
-        formData.get("movie1"),
-        formData.get("movie2"),
-        formData.get("movie3"),
-    ]
-        .map((v) => Number(v))
-        .filter((id) => id > 0);
+    const parsedMovieIds = onboardingMoviesSchema.safeParse({
+        movie1: formData.get("movie1"),
+        movie2: formData.get("movie2"),
+        movie3: formData.get("movie3"),
+    });
+    if (!parsedMovieIds.success) {
+        throw new Error(parsedMovieIds.error.issues[0]?.message ?? "Sélection invalide");
+    }
 
-    if (ids.length !== 3) throw new Error("Sélectionne exactement 3 films");
+    const ids = parsedMovieIds.data;
 
     const movies = await Promise.all(ids.map(getMovieDetails));
 
