@@ -1,13 +1,10 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getRecommendationStack } from "@/lib/tmdb";
+import { refillRequestBodySchema } from "@/lib/validation";
 
 const REFILL_BATCH_SIZE = 12;
 const SEED_LIMIT = 10;
-
-type RefillRequestBody = {
-    excludeIds?: number[];
-};
 
 export async function POST(request: Request) {
     const session = await auth();
@@ -17,17 +14,20 @@ export async function POST(request: Request) {
         return Response.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    let body: RefillRequestBody = {};
+    let body: unknown = {};
 
     try {
-        body = (await request.json()) as RefillRequestBody;
+        body = await request.json();
     } catch {
         body = {};
     }
 
-    const excludeIds = Array.isArray(body.excludeIds)
-        ? body.excludeIds.filter((id): id is number => Number.isInteger(id) && id > 0)
-        : [];
+    const parsedBody = refillRequestBodySchema.safeParse(body);
+    if (!parsedBody.success) {
+        return Response.json({ error: "Payload invalide" }, { status: 400 });
+    }
+
+    const { excludeIds } = parsedBody.data;
 
     const [watchlist, swipes, likedSwipes, dislikedSwipes] = await Promise.all([
         db.watchlistEntry.findMany({

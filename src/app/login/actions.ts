@@ -4,12 +4,22 @@ import { AuthError } from "next-auth";
 import { signIn } from "@/lib/auth";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { loginInputSchema, registerInputSchema } from "@/lib/validation";
 
 export async function loginAction(formData: FormData) {
+    const parsedInput = loginInputSchema.safeParse({
+        email: formData.get("email"),
+        password: formData.get("password"),
+    });
+
+    if (!parsedInput.success) {
+        return { error: parsedInput.error.issues[0]?.message ?? "Identifiants invalides." };
+    }
+
     try {
         await signIn("credentials", {
-            email: formData.get("email"),
-            password: formData.get("password"),
+            email: parsedInput.data.email,
+            password: parsedInput.data.password,
             redirectTo: "/swipe",
         });
     } catch (error) {
@@ -21,16 +31,17 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function registerAction(formData: FormData) {
-    const email = (formData.get("email") as string)?.trim().toLowerCase();
-    const password = formData.get("password") as string;
-    const name = (formData.get("name") as string)?.trim();
+    const parsedInput = registerInputSchema.safeParse({
+        email: formData.get("email"),
+        password: formData.get("password"),
+        name: formData.get("name"),
+    });
 
-    if (!email || !password || !name) {
-        return { error: "Tous les champs sont requis." };
+    if (!parsedInput.success) {
+        return { error: parsedInput.error.issues[0]?.message ?? "Formulaire invalide." };
     }
-    if (password.length < 8) {
-        return { error: "Le mot de passe doit faire au moins 8 caractères." };
-    }
+
+    const { email, password, name } = parsedInput.data;
 
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
