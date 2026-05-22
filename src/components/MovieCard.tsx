@@ -28,19 +28,9 @@ export default function MovieCard({ movie, zIndex, offset }: Props) {
                     alt={movie.title}
                     fill
                     sizes="(max-width: 640px) 100vw, 384px"
-                    className="object-cover"
+                    className="select-none object-cover"
                     priority={offset === 0}
-                    onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                            const res = await fetch(`/api/movies/trailer?tmdbId=${movie.id}`);
-                            if (!res.ok) return;
-                            const data = await res.json();
-                            if (data?.trailer) window.open(data.trailer, '_blank', 'noopener');
-                        } catch (err) {
-                            console.error('Failed to get trailer', err);
-                        }
-                    }}
+                    draggable={false}
                 />
             ) : (
                 <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-6xl">
