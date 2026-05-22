@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { TMDB_IMAGE_BASE, type TmdbMovie } from "@/lib/tmdb";
 import { saveOnboardingMovies } from "./actions";
@@ -12,17 +12,36 @@ export default function SetupForm() {
     const [searching, setSearching] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    const search = useCallback(async (q: string) => {
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const abortRef = useRef<AbortController | null>(null);
+
+    const search = useCallback((q: string) => {
         setQuery(q);
-        if (q.trim().length < 2) {
+
+        if (timerRef.current) clearTimeout(timerRef.current);
+
+        if (q.trim().length < 1) {
             setResults([]);
             return;
         }
-        setSearching(true);
-        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(q)}`);
-        const data: TmdbMovie[] = await res.json();
-        setResults(data.slice(0, 8));
-        setSearching(false);
+
+        timerRef.current = setTimeout(async () => {
+            abortRef.current?.abort();
+            abortRef.current = new AbortController();
+
+            setSearching(true);
+            try {
+                const res = await fetch(`/api/movies/search?q=${encodeURIComponent(q)}`, {
+                    signal: abortRef.current.signal,
+                });
+                const data: TmdbMovie[] = await res.json();
+                setResults(data.slice(0, 8));
+            } catch (e) {
+                if ((e as Error).name !== "AbortError") throw e;
+            } finally {
+                setSearching(false);
+            }
+        }, 300);
     }, []);
 
     const toggle = (movie: TmdbMovie) => {
