@@ -1,5 +1,7 @@
+"use client";
 import Image from "next/image";
-import { TMDB_IMAGE_BASE, type TmdbMovie } from "@/lib/tmdb";
+import {TMDB_IMAGE_BASE, type TmdbMovie } from "@/lib/tmdb";
+
 
 interface Props {
     movie: TmdbMovie;
@@ -28,6 +30,17 @@ export default function MovieCard({ movie, zIndex, offset }: Props) {
                     sizes="(max-width: 640px) 100vw, 384px"
                     className="object-cover"
                     priority={offset === 0}
+                    onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                            const res = await fetch(`/api/movies/trailer?tmdbId=${movie.id}`);
+                            if (!res.ok) return;
+                            const data = await res.json();
+                            if (data?.trailer) window.open(data.trailer, '_blank', 'noopener');
+                        } catch (err) {
+                            console.error('Failed to get trailer', err);
+                        }
+                    }}
                 />
             ) : (
                 <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-6xl">

@@ -61,3 +61,15 @@ export async function getInitialStack(watchlistIds: number[], seenIds: Set<numbe
 
     return deduped.slice(0, 20);
 }
+
+
+export async function getTrailer(tmdbId: number): Promise<string | null> {
+    const res = await fetch(
+        `${TMDB_BASE}/movie/${tmdbId}/videos?api_key=${apiKey()}&language=fr-FR`,
+        { next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const trailer = data.results.find((video: any) => video.type === "Trailer" && video.site === "YouTube");
+    return trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null;
+}
