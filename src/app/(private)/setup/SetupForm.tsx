@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useDeferredValue, useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { TMDB_IMAGE_BASE, type TmdbMovie } from "@/lib/tmdb";
 import { saveOnboardingMovies } from "./actions";
@@ -12,18 +12,32 @@ export default function SetupForm() {
     const [searching, setSearching] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    const search = useCallback(async (q: string) => {
-        setQuery(q);
-        if (q.trim().length < 2) {
+    const deferredQuery = useDeferredValue(query);
+
+    useEffect(() => {
+        if (deferredQuery.trim().length < 1) {
             setResults([]);
             return;
         }
+
+        const controller = new AbortController();
         setSearching(true);
-        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(q)}`);
-        const data: TmdbMovie[] = await res.json();
-        setResults(data.slice(0, 8));
-        setSearching(false);
-    }, []);
+
+        fetch(`/api/movies/search?q=${encodeURIComponent(deferredQuery)}`, {
+            signal: controller.signal,
+        })
+            .then((res) => res.json())
+            .then((data: TmdbMovie[]) => {
+                setResults(data.slice(0, 8));
+                setSearching(false);
+            })
+            .catch((e: Error) => {
+                if (e.name !== "AbortError") throw e;
+                setSearching(false);
+            });
+
+        return () => controller.abort();
+    }, [deferredQuery]);
 
     const toggle = (movie: TmdbMovie) => {
         setSelected((prev) => {
@@ -82,7 +96,7 @@ export default function SetupForm() {
                     type="text"
                     placeholder="Recherche un film..."
                     value={query}
-                    onChange={(e) => search(e.target.value)}
+                    onChange={(e) => setQuery(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 outline-none focus:border-yellow-400"
                 />
                 {searching && (
