@@ -6,6 +6,7 @@ import type { TmdbMovie } from "@/lib/tmdb";
 import { saveSwipe } from "./actions";
 
 const SWIPE_THRESHOLD = 110;
+const TAP_THRESHOLD = 12;
 const REFILL_THRESHOLD = 10;
 
 type DragState = {
@@ -34,6 +35,10 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
     const topMovie = movies[0];
 
     const resetDrag = () => setDrag(initialDragState);
+
+    const openTrailer = (tmdbId: number) => {
+        window.open(`/api/movies/trailer?tmdbId=${tmdbId}`, "_blank", "noopener,noreferrer");
+    };
 
     useEffect(() => {
         if (movies.length === 0 || movies.length > REFILL_THRESHOLD || isRefilling) {
@@ -150,6 +155,16 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
         if (!drag.active || drag.pointerId !== event.pointerId || isSaving) return;
 
         const deltaX = drag.deltaX;
+        if (Math.abs(deltaX) <= TAP_THRESHOLD) {
+            resetDrag();
+
+            if (topMovie) {
+                openTrailer(topMovie.id);
+            }
+
+            return;
+        }
+
         if (Math.abs(deltaX) < SWIPE_THRESHOLD) {
             resetDrag();
             return;
