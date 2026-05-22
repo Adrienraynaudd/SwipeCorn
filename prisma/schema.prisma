@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String           @id @default(cuid())
+  name      String
+  email     String           @unique
+  password  String
+  watchlist WatchlistEntry[]
+  swipes    Swipe[]
+}
+
+model WatchlistEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  tmdbId    Int
+  title     String
+  poster    String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tmdbId])
+}
+
+model Swipe {
+  id        String   @id @default(cuid())
+  userId    String
+  tmdbId    Int
+  liked     Boolean
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tmdbId])
+}
