@@ -1,73 +1,204 @@
-Nom du projet : SwipeCorn
+# 🍿 SwipeCorn
 
-Description : SwipeCorn est une application qui apprend tes goûts en direct : tu swipes des films (gauche/droite) et l'algorithme adapte instantanément la suite des propositions pour te dénicher le film parfait à regarder.
+Application web de découverte de films inspirée de Tinder. Swipe à droite pour ajouter un film à ta watchlist, à gauche pour passer. Les recommandations sont personnalisées à partir de tes films préférés.
 
-Les 6 contraintes cochées :
+---
 
-1.Layouts imbriqués
-    Nous allons créer deux groupes de routes distincts. 
-    Zone Publique : Une page d'accueil   et les pages de connexion . Elles partageront un Layout simple.
-    Zone Privée : L'interface de l'application une fois connecté (/swipe, /watchlist). Ce Layout imbriqué contiendra une barre de navigation mobile persistante qui n'existe pas sur la zone publique.
+## Stack technique
 
-2.Data fetching serveur
-    Au chargement, un Server Component interroge d'abord la base de données  pour récupérer les ID des films présents dans la Watchlist de l'utilisateur. Ensuite, le serveur fait un appel groupé à l'API TMDB pour ces films-là afin de générer une pile initiale de recommandations hautement ciblées.
+| Catégorie | Technologie |
+|---|---|
+| Framework | Next.js 16.2.4 (App Router) |
+| UI | React 19, Tailwind CSS v4 |
+| Langage | TypeScript 5 |
+| Auth | next-auth v5 (beta) — credentials uniquement, JWT |
+| ORM | Prisma v5 |
+| Base de données | SQLite (dev) |
+| Hachage | bcryptjs |
+| API films | TMDB (The Movie Database) |
+| Police | Geist (Google Fonts via next/font) |
 
-3.Server Action
-    Une page /setup contient un formulaire de recherche. L'utilisateur y tape le nom de 3 films qu'il adore. La soumission de ce formulaire appelle une Server Action qui va enregistrer ces 3 films fondateurs dans sa Watchlist en base de données, puis exécuter un redirect('/swipe')
+---
 
-4.Route Handler
-    Lorsque le composant client détecte qu'il ne reste que 3 cartes, il effectue en arrière-plan un fetch vers le Route Handler . Ce Handler (côté serveur) va regarder les derniers films swipés à droite durant la session actuelle, interroger l'API TMDB pour trouver des films similaires, filtrer ceux que l'utilisateur a déjà vus ou swipés (pour éviter les doublons), et renvoyer la nouvelle sélection de cartes en JSON.
+## Architecture
 
-5.Auth next-auth
-    Via NextAuth.js, chaque utilisateur possède son propre profil lié à ses données en base. La pile de recommandations générée sur est 100% unique puisqu'elle se base exclusivement sur le contenu personnalisé de sa Watchlist et de ses swipes passés.
+```
+src/
+├── app/
+│   ├── (private)/               # Routes protégées (auth guard dans le layout)
+│   │   ├── layout.tsx           # Vérifie la session + barre de nav
+│   │   ├── setup/               # Onboarding : choix des 3 films favoris
+│   │   ├── swipe/               # Page principale de swipe
+│   │   └── watchlist/           # Films sauvegardés (à venir)
+│   ├── api/
+│   │   ├── auth/[...nextauth]/  # Handler next-auth
+│   │   └── movies/search/       # Proxy TMDB pour le client
+│   ├── login/                   # Page connexion / inscription
+│   └── page.tsx                 # Landing page publique
+├── auth.config.ts               # Config next-auth edge-safe (sans Prisma)
+├── proxy.ts                     # Remplace middleware.ts (Next.js 16)
+├── components/
+│   ├── MovieCard.tsx            # Carte film (poster, titre, note, synopsis)
+│   └── NavBar.tsx               # Navigation bas de page
+└── lib/
+    ├── auth.ts                  # Config next-auth complète (avec Prisma + bcrypt)
+    ├── db.ts                    # Singleton Prisma
+    └── tmdb.ts                  # Helpers TMDB (search, recommandations, stack)
+```
 
-6.Optimisations mesurables
-    Images : Utilisation de next/image pour toutes les affiches de films . Configuration du fichier next.config.js pour autoriser le domaine de TMDB, activation du lazy-loading natif et redimensionnement automatique selon l'écran mobile.
-    Polices : Optimisation via next/font/google pour éliminer le flash de texte non stylisé
-    Streaming : Utilisation d'un fichier loading.tsx sur la page /swipe. Pendant que le serveur récupère les films de la Watchlist puis calcule les recommandations sur TMDB, l'utilisateur voit une belle animation de cartes.
+### Points d'architecture notables
 
-MVP :
-Authentification basique : Connexion et déconnexion de l'utilisateur via NextAuth (ex: Google ou GitHub)
+- **Split config** : `auth.config.ts` (edge-safe, pas d'import Prisma) est utilisé par `proxy.ts`. `lib/auth.ts` (avec Prisma) est utilisé uniquement côté serveur Node.js.
+- **proxy.ts** remplace `middleware.ts`, renommé dans Next.js 16 ; il tourne en runtime Node.js (pas Edge) pour pouvoir lire les cookies JWT.
+- **Server Actions** pour toutes les mutations (connexion, inscription, onboarding, swipe).
+- Les recommandations TMDB sont filtrées côté serveur : les films déjà swipés ou en watchlist ne sont jamais renvoyés.
 
-Onboarding  : Un écran avec un champ de recherche qui oblige un nouvel utilisateur à trouver et sélectionner 3 films qu'il aime pour initialiser l'algorithme.
+---
 
-Interface de Swipe : Un écran affichant une pile de cartes de films. Chaque carte contient l'affiche, le titre et le synopsis du film.
+## Modèle de données
 
-Lecture de la bande-annonce : Au clic  sur la carte d'un film, l'utilisateur est redirigé vers l'application ou le site YouTube pour visionner la bande-annonce officielle du film.
+```prisma
+model User {
+  id        String           @id @default(cuid())
+  name      String
+  email     String           @unique
+  password  String           # Haché avec bcryptjs (10 rounds)
+  watchlist WatchlistEntry[]
+  swipes    Swipe[]
+}
 
-Actions de Swipe  :  Swipe à droite : Le film est sauvegardé en base de données dans la Watchlist de l'utilisateur.
-Swipe à gauche : Le film est ignoré. et quand même enregistré en base de données pour éviter de le reproposer.
+model WatchlistEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  tmdbId    Int                      # ID TMDB du film
+  title     String
+  poster    String?
+  user      User     @relation(...)
+  createdAt DateTime @default(now())
+  @@unique([userId, tmdbId])
+}
 
-Règle métier : Un film swipé ne doit plus jamais réapparaître dans la pile.
+model Swipe {
+  id        String   @id @default(cuid())
+  userId    String
+  tmdbId    Int
+  liked     Boolean                  # true = like, false = dislike
+  user      User     @relation(...)
+  createdAt DateTime @default(now())
+  @@unique([userId, tmdbId])         # Un seul swipe par film par utilisateur
+}
+```
 
-Moteur de réapprovisionnement dynamique : Lorsque la pile de cartes tombe à 3 éléments, l'application appelle l'API en arrière-plan pour générer et ajouter de nouvelles cartes basées sur les films de la Watchlist.
+---
 
-Page Watchlist : Une page dédiée listant toutes les affiches des films que l'utilisateur a swipés à droite.
+## Installation
 
-User Story :
-1. Authentification & Création de profil
-    En tant qu' utilisateur, je veux pouvoir me connecter avec mon compte (ex: Google/GitHub) afin de posséder un profil unique et de sauvegarder mon historique de films.
+### Prérequis
 
-2. Onboarding
-    En tant que nouvel utilisateur, je veux devoir rechercher et sélectionner 3 films que j'aime lors de ma première connexion afin de donner une base de recommandations pertinente à l'algorithme.
+- Node.js 20+
+- Un compte [TMDB](https://www.themoviedb.org/) pour obtenir une clé API
 
-3. Affichage des cartes de films
-    En tant qu' utilisateur, je veux voir à l'écran une carte affichant l'affiche, le titre et le synopsis d'un film afin de comprendre rapidement de quoi il parle.
+### 1. Cloner et installer
 
-4. Lecture de la bande-annonce
-    En tant qu' utilisateur, je veux pouvoir cliquer sur la carte d'un film pour être redirigé vers sa bande-annonce sur YouTube afin de m'aider à décider si le film me plaît ou non.
+```bash
+git clone <url-du-repo>
+cd SwipeCorn
+npm install
+```
 
-5. Interaction de Swipe (Gauche / Droite)
-    En tant qu' utilisateur, je veux pouvoir swiper une carte à droite pour l'ajouter à ma Watchlist, ou à gauche pour l'ignorer, afin de trier facilement les propositions.
+### 2. Variables d'environnement
 
-6. Règle d'exclusion des doublons
-    En tant qu' utilisateur, je veux ne jamais revoir dans ma pile un film que j'ai déjà swipé (à gauche ou à droite) afin de toujours découvrir de nouvelles propositions et ne pas perdre mon temps.
+Copie le fichier exemple et remplis les valeurs :
 
-7. Réapprovisionnement dynamique de la pile
-    En tant qu' utilisateur, je veux que de nouvelles cartes se chargent de manière invisible en arrière-plan quand il ne m'en reste plus que 3 afin de pouvoir swiper à l'infini sans subir de temps de chargement.
+```bash
+cp .env.example .env.local
+```
 
-8. Consultation de la Watchlist
-    En tant qu' utilisateur, je veux avoir accès à une page "Watchlist" qui regroupe toutes les affiches des films que j'ai swipés à droite afin de choisir facilement le film que je vais regarder ce soir.
+```env
+# .env.local
 
-9. Optimisation de l'expérience utilisateur
-    En tant qu' utilisateur, je veux que les images soient optimisées pour un chargement rapide et que les polices soient chargées de manière fluide afin d'avoir une expérience agréable et sans frustration.
+# Clé secrète pour chiffrer les sessions JWT (génère avec : openssl rand -base64 32)
+AUTH_SECRET=ta_clé_secrète_aléatoire
+
+# Chemin vers la base SQLite
+DATABASE_URL="file:./dev.db"
+
+# Clé API TMDB (https://www.themoviedb.org/settings/api)
+TMDB_API_KEY=ta_clé_tmdb
+```
+
+### 3. Base de données
+
+```bash
+npx prisma db push      # Crée le fichier SQLite et applique le schéma
+npx prisma generate     # Génère le client Prisma typé
+```
+
+> **Windows** : si le serveur de dev tourne, le fichier `query_engine-windows.dll.node` est verrouillé. Arrête le serveur avant de lancer ces commandes.
+
+### 4. Lancer le serveur de développement
+
+```bash
+npm run dev
+```
+
+L'application est disponible sur [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Flux utilisateur
+
+```
+/                   Landing page
+  └── /login        Connexion ou inscription (email + mot de passe)
+        └── /setup  Onboarding : recherche et sélection de 3 films favoris
+              └── /swipe  Pile de films recommandés
+                    └── /watchlist  Films likés (sauvegardés)
+```
+
+1. **Landing** — présentation de l'app + bouton "Commencer".
+2. **Login / Register** — formulaire unique avec toggle. Inscription crée le compte, hache le mot de passe, et connecte automatiquement.
+3. **Setup** — recherche TMDB en temps réel, sélection de 3 films. Les films sont sauvegardés en watchlist et servent de graine pour les recommandations.
+4. **Swipe** — pile de cartes générée à partir des recommandations TMDB de la watchlist. Bouton ✕ (dislike) ou ♥ (like) — chaque action est enregistrée en base et le film n'apparaît plus jamais.
+
+---
+
+## User Stories
+
+| # | Intitulé | Statut |
+|---|---|---|
+| US1 | Authentification email / mot de passe | ✅ Fait |
+| US2 | Onboarding : sélection de 3 films favoris | ✅ Fait |
+| US3 | Affichage des cartes films (poster, titre, note, synopsis) | ✅ Fait |
+| US4 | Lien vers la bande-annonce au clic sur la carte | ⬜ À faire |
+| US5 | Gestes de swipe (glisser gauche / droite) | ⬜ À faire |
+| US6 | Exclusion des doublons (films déjà swipés) | ✅ Fait |
+| US7 | Rechargement dynamique de la pile à 3 cartes restantes | ⬜ À faire |
+| US8 | Page Watchlist (liste des films likés) | ⬜ À faire |
+| US9 | Optimisations images et polices | ⬜ À faire |
+
+---
+
+## API Routes
+
+| Méthode | Route | Description |
+|---|---|---|
+| `GET` `POST` | `/api/auth/[...nextauth]` | Handlers next-auth (session, CSRF) |
+| `GET` | `/api/movies/search?q=...` | Recherche de films via TMDB (proxy serveur) |
+
+---
+
+## Scripts
+
+```bash
+npm run dev      # Serveur de développement (http://localhost:3000)
+npm run build    # Build de production
+npm run start    # Serveur de production
+npm run lint     # ESLint
+```
+
+```bash
+npx prisma studio          # Interface graphique pour la base de données
+npx prisma db push         # Applique le schéma sans migration
+npx prisma generate        # Regénère le client TypeScript
+```
