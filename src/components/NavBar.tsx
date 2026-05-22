@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/app/actions";
 
 const links = [
     { href: "/swipe", label: "Swipe", icon: "🎬" },
     { href: "/watchlist", label: "Watchlist", icon: "❤️" },
+    { href: "/dislikes", label: "Dislikes", icon: "💔" },
 ];
 
 export default function NavBar() {
@@ -29,6 +31,14 @@ export default function NavBar() {
                         </Link>
                     );
                 })}
+                <form action={logout}>
+                    <button
+                        type="submit"
+                        className="flex flex-col items-center gap-1 px-6 py-2 text-xs font-medium text-zinc-500 transition hover:text-red-400"
+                    >
+                        <span className="text-xl">🚪</span>{"Logout"}
+                    </button>
+                </form>
             </div>
         </nav>
     );
