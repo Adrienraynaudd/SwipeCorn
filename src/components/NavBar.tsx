@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions";
 
 const links = [
-    { href: "/swipe", label: "Swipe", icon: "🎬" },
     { href: "/watchlist", label: "Watchlist", icon: "❤️" },
+    { href: "/swipe", label: "Swipe", icon: "🎬" },
     { href: "/dislikes", label: "Dislikes", icon: "💔" },
 ];
 

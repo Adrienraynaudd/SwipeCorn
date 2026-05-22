@@ -1,4 +1,4 @@
-export default function WatchlistSkeleton() {
+export default function MovieGridSkeleton() {
     return (
         <div className="grid grid-cols-8 gap-2">
             {Array.from({ length: 16 }, (_, i) => `s${i}`).map((id) => (
