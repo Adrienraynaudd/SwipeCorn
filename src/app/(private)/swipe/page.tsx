@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { getInitialStack } from "@/lib/tmdb";
-import MovieCard from "@/components/MovieCard";
+import SwipeDeck from "./SwipeDeck";
 
 export default async function SwipePage() {
     const session = await auth();
@@ -36,16 +36,7 @@ export default async function SwipePage() {
                 </div>
             ) : (
                 <div className="relative w-full max-w-sm">
-                    <div className="relative h-[480px]">
-                        {movies.slice(0, 5).map((movie, i) => (
-                            <MovieCard
-                                key={movie.id}
-                                movie={movie}
-                                zIndex={movies.length - i}
-                                offset={i}
-                            />
-                        ))}
-                    </div>
+                    <SwipeDeck initialMovies={movies} />
                     <p className="mt-4 text-center text-xs text-zinc-600">
                         Clique sur la carte pour voir la bande-annonce
                     </p>
