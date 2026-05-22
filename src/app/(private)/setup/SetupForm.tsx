@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useDeferredValue, useEffect, useState, useTransition } from "react";
 import Image from "next/image";
 import { TMDB_IMAGE_BASE, type TmdbMovie } from "@/lib/tmdb";
 import { saveOnboardingMovies } from "./actions";
@@ -12,37 +12,32 @@ export default function SetupForm() {
     const [searching, setSearching] = useState(false);
     const [isPending, startTransition] = useTransition();
 
-    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const abortRef = useRef<AbortController | null>(null);
+    const deferredQuery = useDeferredValue(query);
 
-    const search = useCallback((q: string) => {
-        setQuery(q);
-
-        if (timerRef.current) clearTimeout(timerRef.current);
-
-        if (q.trim().length < 1) {
+    useEffect(() => {
+        if (deferredQuery.trim().length < 1) {
             setResults([]);
             return;
         }
 
-        timerRef.current = setTimeout(async () => {
-            abortRef.current?.abort();
-            abortRef.current = new AbortController();
+        const controller = new AbortController();
+        setSearching(true);
 
-            setSearching(true);
-            try {
-                const res = await fetch(`/api/movies/search?q=${encodeURIComponent(q)}`, {
-                    signal: abortRef.current.signal,
-                });
-                const data: TmdbMovie[] = await res.json();
+        fetch(`/api/movies/search?q=${encodeURIComponent(deferredQuery)}`, {
+            signal: controller.signal,
+        })
+            .then((res) => res.json())
+            .then((data: TmdbMovie[]) => {
                 setResults(data.slice(0, 8));
-            } catch (e) {
-                if ((e as Error).name !== "AbortError") throw e;
-            } finally {
                 setSearching(false);
-            }
-        }, 300);
-    }, []);
+            })
+            .catch((e: Error) => {
+                if (e.name !== "AbortError") throw e;
+                setSearching(false);
+            });
+
+        return () => controller.abort();
+    }, [deferredQuery]);
 
     const toggle = (movie: TmdbMovie) => {
         setSelected((prev) => {
@@ -101,7 +96,7 @@ export default function SetupForm() {
                     type="text"
                     placeholder="Recherche un film..."
                     value={query}
-                    onChange={(e) => search(e.target.value)}
+                    onChange={(e) => setQuery(e.target.value)}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 outline-none focus:border-yellow-400"
                 />
                 {searching && (
