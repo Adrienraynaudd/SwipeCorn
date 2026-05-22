@@ -19,3 +19,20 @@ export async function removeFromWatchlist(tmdbId: number) {
 
     redirect("/watchlist");
 }
+
+export async function moveToDislike(tmdbId: number) {
+    const session = await auth();
+    if (!session?.user?.id) return;
+    const userId = session.user.id;
+
+    await Promise.all([
+        db.watchlistEntry.deleteMany({ where: { userId, tmdbId } }),
+        db.swipe.upsert({
+            where: { userId_tmdbId: { userId, tmdbId } },
+            update: { liked: false },
+            create: { userId, tmdbId, liked: false },
+        }),
+    ]);
+
+    redirect("/watchlist");
+}
