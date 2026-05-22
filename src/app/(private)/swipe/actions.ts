@@ -3,7 +3,14 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-export async function saveSwipe(input: { tmdbId: number; liked: boolean }) {
+type SaveSwipeInput = {
+    tmdbId: number;
+    liked: boolean;
+    title?: string;
+    posterPath?: string | null;
+};
+
+export async function saveSwipe(input: SaveSwipeInput) {
     const session = await auth();
     const userId = session?.user?.id;
 
@@ -15,21 +22,53 @@ export async function saveSwipe(input: { tmdbId: number; liked: boolean }) {
         throw new Error("Film invalide");
     }
 
-    await db.swipe.upsert({
-        where: {
-            userId_tmdbId: {
+    const title = input.title?.trim();
+    const poster = input.posterPath?.trim() || null;
+
+    if (input.liked && !title) {
+        throw new Error("Titre invalide");
+    }
+
+    await db.$transaction(async (tx) => {
+        await tx.swipe.upsert({
+            where: {
+                userId_tmdbId: {
+                    userId,
+                    tmdbId: input.tmdbId,
+                },
+            },
+            create: {
                 userId,
                 tmdbId: input.tmdbId,
+                liked: input.liked,
             },
-        },
-        create: {
-            userId,
-            tmdbId: input.tmdbId,
-            liked: input.liked,
-        },
-        update: {
-            liked: input.liked,
-        },
+            update: {
+                liked: input.liked,
+            },
+        });
+
+        if (!input.liked) {
+            return;
+        }
+
+        await tx.watchlistEntry.upsert({
+            where: {
+                userId_tmdbId: {
+                    userId,
+                    tmdbId: input.tmdbId,
+                },
+            },
+            create: {
+                userId,
+                tmdbId: input.tmdbId,
+                title: title!,
+                poster,
+            },
+            update: {
+                title: title!,
+                poster,
+            },
+        });
     });
 
     return { ok: true };

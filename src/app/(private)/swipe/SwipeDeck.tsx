@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MovieCard from "@/components/MovieCard";
 import type { TmdbMovie } from "@/lib/tmdb";
 import { saveSwipe } from "./actions";
 
 const SWIPE_THRESHOLD = 110;
+const REFILL_THRESHOLD = 10;
 
 type DragState = {
     active: boolean;
@@ -25,11 +26,69 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
     const [movies, setMovies] = useState(initialMovies);
     const [drag, setDrag] = useState<DragState>(initialDragState);
     const [isSaving, setIsSaving] = useState(false);
+    const [isRefilling, setIsRefilling] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [refillError, setRefillError] = useState<string | null>(null);
+    const lastRefillSignatureRef = useRef<string | null>(null);
 
     const topMovie = movies[0];
 
     const resetDrag = () => setDrag(initialDragState);
+
+    useEffect(() => {
+        if (movies.length === 0 || movies.length > REFILL_THRESHOLD || isRefilling) {
+            return;
+        }
+
+        const signature = movies.map((movie) => movie.id).join(",");
+        if (lastRefillSignatureRef.current === signature) {
+            return;
+        }
+
+        lastRefillSignatureRef.current = signature;
+
+        const refill = async () => {
+            setIsRefilling(true);
+            setRefillError(null);
+
+            try {
+                const response = await fetch("/api/movies/refill", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        excludeIds: movies.map((movie) => movie.id),
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Refill failed");
+                }
+
+                const incomingMovies = (await response.json()) as TmdbMovie[];
+
+                setMovies((current) => {
+                    const existingIds = new Set(current.map((movie) => movie.id));
+                    const uniqueMovies = incomingMovies.filter(
+                        (movie) => !existingIds.has(movie.id)
+                    );
+
+                    if (uniqueMovies.length === 0) {
+                        return current;
+                    }
+
+                    return [...current, ...uniqueMovies];
+                });
+            } catch {
+                setRefillError("Impossible de recharger de nouveaux films.");
+            } finally {
+                setIsRefilling(false);
+            }
+        };
+
+        void refill();
+    }, [isRefilling, movies]);
 
     const commitSwipe = async (liked: boolean) => {
         const movie = movies[0];
@@ -45,7 +104,12 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
         });
 
         try {
-            await saveSwipe({ tmdbId: movie.id, liked });
+            await saveSwipe({
+                tmdbId: movie.id,
+                liked,
+                title: movie.title,
+                posterPath: movie.poster_path,
+            });
             setMovies((current) => current.slice(1));
             resetDrag();
         } catch {
@@ -194,9 +258,21 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
                 <p className="mt-3 text-center text-sm text-zinc-400">Enregistrement du swipe...</p>
             )}
 
+            {isRefilling && (
+                <p className="mt-3 text-center text-sm text-zinc-500">
+                    Chargement de nouvelles cartes...
+                </p>
+            )}
+
             {error && (
                 <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
                     {error}
+                </p>
+            )}
+
+            {refillError && (
+                <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                    {refillError}
                 </p>
             )}
         </div>

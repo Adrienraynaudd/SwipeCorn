@@ -45,8 +45,13 @@ export async function getMovieDetails(tmdbId: number): Promise<TmdbMovie | null>
     return res.json();
 }
 
-export async function getInitialStack(watchlistIds: number[], seenIds: Set<number>): Promise<TmdbMovie[]> {
-    const allRecs = await Promise.all(watchlistIds.map(getRecommendations));
+export async function getRecommendationStack(
+    seedIds: number[],
+    seenIds: Set<number>,
+    limit = 20
+): Promise<TmdbMovie[]> {
+    const uniqueSeedIds = [...new Set(seedIds)].filter((id) => id > 0);
+    const allRecs = await Promise.all(uniqueSeedIds.map(getRecommendations));
     const seen = new Set(seenIds);
     const deduped: TmdbMovie[] = [];
 
@@ -59,7 +64,11 @@ export async function getInitialStack(watchlistIds: number[], seenIds: Set<numbe
         }
     }
 
-    return deduped.slice(0, 20);
+    return deduped.slice(0, limit);
+}
+
+export async function getInitialStack(watchlistIds: number[], seenIds: Set<number>): Promise<TmdbMovie[]> {
+    return getRecommendationStack(watchlistIds, seenIds, 20);
 }
 
 
