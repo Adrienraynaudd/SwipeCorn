@@ -20,14 +20,6 @@ export async function loginAction(formData: FormData) {
     }
 }
 
-export async function signInWithGitHub() {
-    await signIn("github", { redirectTo: "/swipe" });
-}
-
-export async function signInWithGoogle() {
-    await signIn("google", { redirectTo: "/swipe" });
-}
-
 export async function registerAction(formData: FormData) {
     const email = (formData.get("email") as string)?.trim().toLowerCase();
     const password = formData.get("password") as string;
