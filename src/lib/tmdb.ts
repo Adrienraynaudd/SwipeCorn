@@ -1,5 +1,6 @@
 const TMDB_BASE = "https://api.themoviedb.org/3";
 export const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+export const TMDB_BACKDROP_BASE = "https://image.tmdb.org/t/p/w1280";
 
 const RECOMMENDATION_PAGES = [1, 2];
 const MAX_POSITIVE_SEEDS = 12;
@@ -25,6 +26,31 @@ export interface TmdbMovie {
 
 export interface TmdbMovieDetails extends TmdbMovie {
     genres?: Array<{ id: number; name: string }>;
+    backdrop_path?: string | null;
+    tagline?: string;
+    runtime?: number;
+    vote_count?: number;
+    original_title?: string;
+    original_language?: string;
+    status?: string;
+    budget?: number;
+    revenue?: number;
+    homepage?: string | null;
+    imdb_id?: string | null;
+    belongs_to_collection?: {
+        id: number;
+        name: string;
+        poster_path: string | null;
+        backdrop_path: string | null;
+    } | null;
+    production_companies?: Array<{
+        id: number;
+        name: string;
+        logo_path: string | null;
+        origin_country: string;
+    }>;
+    spoken_languages?: Array<{ english_name: string; iso_639_1: string; name: string }>;
+    origin_country?: string[];
 }
 
 export async function searchMovies(query: string): Promise<TmdbMovie[]> {
