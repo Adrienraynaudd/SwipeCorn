@@ -20,7 +20,8 @@ export default function AuthForm() {
         empty
     );
 
-    const pending = loginPending || registerPending;
+    const [githubPending, setGithubPending] = useState(false);
+    const pending = loginPending || registerPending || githubPending;
     const error = mode === "login" ? loginState?.error : registerState?.error;
 
     const inputCls =
@@ -68,8 +69,16 @@ export default function AuthForm() {
                     >
                         {loginPending ? "Connexion..." : "Se connecter"}
                     </button>
-                </form><button onClick={() => signIn("github", { callbackUrl: "/swipe" })}>
-                        Se connecter avec GitHub
+                </form><button
+                        type="button"
+                        disabled={pending}
+                        onClick={async () => {
+                            setGithubPending(true);
+                            await signIn("github", { callbackUrl: "/swipe" });
+                        }}
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-800 py-3 font-semibold text-white transition hover:bg-zinc-700 active:scale-95 disabled:opacity-50"
+                    >
+                        {githubPending ? "Redirection vers GitHub..." : "Se connecter avec GitHub"}
                     </button></>
             ) : (
                 <form action={registerDispatch} className="flex flex-col gap-3">
