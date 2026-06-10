@@ -130,62 +130,34 @@ model Swipe {
 ```
 src/
 ├── app/
-│   ├── (private)/                    # Groupe de routes protégées
-│   │   ├── layout.tsx                # Vérifie la session + affiche la NavBar
-│   │   ├── setup/                    # Onboarding : sélection de 3 films favoris
+│   ├── (private)/                # Groupe de routes protégées
+│   │   ├── layout.tsx            # Vérifie la session + affiche la NavBar
+│   │   ├── setup/                # Onboarding : sélection de 3 films favoris
 │   │   │   ├── page.tsx
-│   │   │   ├── SetupForm.tsx         # Recherche TMDB + sélection (client)
-│   │   │   ├── loading.tsx
-│   │   │   └── actions.ts            # saveOnboardingMovies
-│   │   ├── swipe/                    # Pile de recommandations
-│   │   │   ├── page.tsx              # RSC : fetch watchlist + swipes → stack TMDB
-│   │   │   ├── SwipeDeck.tsx         # Client : gestes drag, refill, trailer
-│   │   │   ├── loading.tsx
-│   │   │   └── actions.ts            # saveSwipe
-│   │   ├── watchlist/                # Films likés
-│   │   │   ├── page.tsx
-│   │   │   ├── WatchlistGrid.tsx     # RSC : fetch + liste des affiches
-│   │   │   ├── loading.tsx
-│   │   │   ├── actions.ts            # removeFromWatchlist, moveToDislike
-│   │   │   └── [tmdbId]/             # Détail d'un film de la watchlist
-│   │   │       ├── page.tsx
-│   │   │       └── loading.tsx
-│   │   └── dislikes/                 # Films ignorés (swipe gauche)
-│   │       ├── page.tsx
-│   │       ├── DislikeGrid.tsx       # RSC : fetch + liste des affiches
-│   │       ├── loading.tsx
-│   │       ├── actions.ts            # removeFromDislikes, moveToWatchlist
-│   │       └── [tmdbId]/             # Détail d'un film ignoré
-│   │           ├── page.tsx
-│   │           └── loading.tsx
+│   │   │   ├── SetupForm.tsx     # Recherche TMDB + sélection (client)
+│   │   │   └── actions.ts        # saveOnboardingMovies (server action)
+│   │   ├── swipe/                # Pile de recommandations
+│   │   │   ├── page.tsx          # Fetch watchlist + swipes → stack TMDB
+│   │   │   └── loading.tsx       # Skeleton pendant le chargement
+│   │   └── watchlist/            # Films likés (à venir)
 │   ├── api/
-│   │   ├── auth/[...nextauth]/       # Handler next-auth (GET + POST)
-│   │   └── movies/
-│   │       ├── search/               # Proxy TMDB pour le client (cache 60 s)
-│   │       ├── refill/               # Nouvelles cartes quand la pile est basse
-│   │       └── trailer/              # Lien YouTube de la bande-annonce
+│   │   ├── auth/[...nextauth]/   # Handler next-auth (GET + POST)
+│   │   └── movies/search/        # Proxy TMDB pour le client
 │   ├── login/
 │   │   ├── page.tsx
-│   │   ├── AuthForm.tsx              # Formulaire login / register (client)
-│   │   └── actions.ts                # loginAction, registerAction
-│   ├── actions.ts                    # logout
-│   ├── layout.tsx                    # Root layout (HTML, Geist font, fond zinc-950)
-│   ├── loading.tsx
-│   ├── error.tsx
-│   ├── not-found.tsx
-│   └── page.tsx                      # Landing page publique
-├── auth.config.ts                    # Config next-auth edge-safe (sans Prisma)
-├── proxy.ts                          # Remplace middleware.ts (Next.js 16)
+│   │   ├── AuthForm.tsx          # Formulaire login / register (client)
+│   │   └── actions.ts            # loginAction, registerAction
+│   ├── layout.tsx                # Root layout (HTML, font, fond zinc-950)
+│   └── page.tsx                  # Landing page publique
+├── auth.config.ts                # Config next-auth edge-safe (sans Prisma)
+├── proxy.ts                      # Remplace middleware.ts (Next.js 16)
 ├── components/
-│   ├── MovieCard.tsx                 # Carte film : poster, titre, note, synopsis
-│   ├── MovieDetailLayout.tsx         # Layout page détail (backdrop, infos, actions)
-│   ├── FilterableGrid.tsx            # Grille filtrée côté client
-│   └── NavBar.tsx                    # Navigation bas de page (Swipe / Watchlist / Dislikes)
+│   ├── MovieCard.tsx             # Carte film : poster, titre, note, synopsis
+│   └── NavBar.tsx                # Navigation bas de page (Swipe / Watchlist)
 └── lib/
-    ├── auth.ts                       # Config next-auth complète (Prisma + bcrypt)
-    ├── db.ts                         # Singleton PrismaClient
-    ├── tmdb.ts                       # searchMovies, getRecommendationStack, getMovieDetails…
-    └── validation.ts                 # Schémas Zod partagés
+    ├── auth.ts                   # Config next-auth complète (Prisma + bcrypt)
+    ├── db.ts                     # Singleton PrismaClient
+    └── tmdb.ts                   # searchMovies, getRecommendations, getInitialStack
 ```
 
 ### Points notables
@@ -193,42 +165,23 @@ src/
 - **Split config** — `auth.config.ts` est importé par `proxy.ts` (runtime Edge, sans Prisma). `lib/auth.ts` est utilisé uniquement dans les Server Components et Server Actions (runtime Node.js).
 - **proxy.ts** — remplace `middleware.ts`, renommé dans Next.js 16. Il lit le cookie JWT sans appeler la base de données.
 - **Exclusion des doublons** — au chargement de `/swipe`, la page construit un `Set` des `tmdbId` déjà swipés et de la watchlist, puis filtre les recommandations TMDB en conséquence. Un film déjà traité ne réapparaît jamais.
-- **Réapprovisionnement dynamique** — `SwipeDeck` détecte quand il reste ≤ 10 cartes et appelle le Route Handler `/api/movies/refill` en arrière-plan, sans interruption visible pour l'utilisateur.
-- **Server Actions** pour toutes les mutations : connexion, inscription, onboarding, swipe, watchlist, dislikes, déconnexion. Chaque action appelle `revalidatePath()` avant `redirect()` pour invalider le cache immédiatement.
-- **Stratégie de cache TMDB**
-
-  | Fonction | Type | Durée | Tags | Justification |
-  |---|---|---|---|---|
-  | `getMovieDetails` | ISR — `next: { revalidate }` | 3 600 s (1 h) | — | Les métadonnées d'un film (titre, genres, synopsis) sont quasi-statiques ; 1 h évite les appels redondants sans risquer de données périmées. |
-  | `getRecommendations` | ISR — `next: { revalidate }` | 3 600 s (1 h) | — | Les recommandations TMDB évoluent lentement ; le cache long préserve le quota API. |
-  | `getPopularMovies` | ISR — `next: { revalidate }` | 3 600 s (1 h) | — | Le classement des films populaires ne change pas plus d'une fois par heure. |
-  | `discoverMoviesByGenre` | ISR — `next: { revalidate }` | 3 600 s (1 h) | — | Données éditoriales stables ; durée longue pour limiter les appels TMDB lors du calcul de la pile. |
-  | `getTrailer` | ISR — `next: { revalidate }` | 3 600 s (1 h) | — | Un lien YouTube de bande-annonce ne change pas ; cache long approprié. |
-  | `searchMovies` | ISR — `next: { revalidate }` | 60 s (1 min) | — | Les résultats de recherche doivent rester frais pour refléter les nouvelles sorties ; durée courte intentionnelle. |
-
-  **Type :** ISR (Incremental Static Regeneration) via `next: { revalidate: N }`. Next.js met la réponse `fetch` en cache côté serveur et la revalide en arrière-plan après expiration — aucune requête TMDB pendant la fenêtre de cache.
-
-  **Tags :** non utilisés. La revalidation est pilotée par expiration temporelle. Des tags (`next: { tags: ["movie-details"] }`) seraient pertinents pour invalider sélectivement après une mutation sur une base de films propre, ce qui ne s'applique pas ici (source externe TMDB en lecture seule).
-
-  **Revalidation après mutation :** les Server Actions appellent `revalidatePath()` avant `redirect()` pour invalider immédiatement les pages affectées (ex. `revalidatePath("/watchlist")` après ajout ou suppression d'un film).
+- **Server Actions** pour toutes les mutations : connexion, inscription, onboarding.
+- **Cache TMDB** — `getRecommendations` et `getMovieDetails` utilisent `next: { revalidate: 3600 }` ; `searchMovies` utilise `revalidate: 60`.
 
 ---
 
 ## Flux utilisateur
 
 ```
-/                   → landing page + bouton "Commencer"
-/login              → connexion (email + mot de passe)
-                       ou inscription (prénom + email + mot de passe ≥ 8 car.)
-/setup              → recherche et sélection de 3 films favoris
-/swipe              → pile de recommandations personnalisées (swipe gauche / droite)
-/watchlist          → liste des films likés (swipe droite)
-/watchlist/[id]     → détail d'un film de la watchlist
-/dislikes           → liste des films ignorés (swipe gauche)
-/dislikes/[id]      → détail d'un film ignoré
+/           → landing page + bouton "Commencer"
+/login      → connexion (email + mot de passe)
+             ou inscription (prénom + email + mot de passe ≥ 8 car.)
+/setup      → recherche et sélection de 3 films favoris
+/swipe      → pile de recommandations personnalisées
+/watchlist  → films likés (non implémenté)
 ```
 
-L'inscription crée le compte, hache le mot de passe, et connecte l'utilisateur automatiquement avec redirection vers `/setup`. Depuis `/watchlist` et `/dislikes`, l'utilisateur peut déplacer un film d'une liste à l'autre ou le supprimer.
+L'inscription crée le compte, hache le mot de passe, et connecte l'utilisateur automatiquement avec redirection vers `/setup`.
 
 ---
 
@@ -238,8 +191,6 @@ L'inscription crée le compte, hache le mot de passe, et connecte l'utilisateur 
 |---|---|---|
 | `GET` `POST` | `/api/auth/[...nextauth]` | Handlers next-auth (session JWT, CSRF) |
 | `GET` | `/api/movies/search?q=...` | Recherche TMDB — résultats mis en cache 60 s |
-| `POST` | `/api/movies/refill` | Nouvelles cartes quand la pile ≤ 10 — exclut les films déjà vus |
-| `GET` | `/api/movies/trailer?id=...` | Lien YouTube de la bande-annonce (cache 1 h) |
 
 ---
 
@@ -247,12 +198,12 @@ L'inscription crée le compte, hache le mot de passe, et connecte l'utilisateur 
 
 | # | Intitulé | Statut |
 |---|---|---|
-| US1 | Authentification email / mot de passe (connexion + inscription + déconnexion) | ✅ |
+| US1 | Authentification email / mot de passe (connexion + inscription) | ✅ |
 | US2 | Onboarding : recherche et sélection de 3 films favoris | ✅ |
 | US3 | Affichage des cartes films (poster, titre, note, synopsis) | ✅ |
-| US4 | Lien vers la bande-annonce au clic sur une carte | ✅ |
-| US5 | Gestes de swipe gauche / droite | ✅ |
-| US6 | Exclusion des films déjà swipés de la pile | ✅ |
-| US7 | Rechargement dynamique quand il reste ≤ 10 cartes | ✅ |
-| US8 | Page Watchlist + Dislikes : liste et détail des films | ✅ |
-| US9 | Optimisations `next/image` (affiches) et `next/font` (Geist) | ✅ |
+| US4 | Lien vers la bande-annonce au clic sur une carte | ⬜ |
+| US5 | Gestes de swipe gauche / droite | ⬜ |
+| US6 | Exclusion des films déjà swipés de la pile | ⬜ |
+| US7 | Rechargement dynamique quand il reste 3 cartes | ⬜ |
+| US8 | Page Watchlist : liste des films likés | ⬜ |
+| US9 | Optimisations images et polices | ⬜ |
