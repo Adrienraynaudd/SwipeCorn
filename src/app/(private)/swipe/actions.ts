@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { saveSwipeInputSchema } from "@/lib/validation";
@@ -61,5 +62,7 @@ export async function saveSwipe(input: unknown) {
         });
     });
 
+    revalidatePath("/watchlist");
+    revalidatePath("/swipe");
     return { ok: true };
 }
