@@ -5,9 +5,9 @@ import type { NextRequest } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-const privateRoutes = ["/setup", "/swipe", "/watchlist"];
+const privateRoutes = ["/setup", "/swipe", "/watchlist", "/dislikes"];
 
-export const proxy = auth((request) => {
+export default auth((request) => {
     const session = request.auth;
     const path = (request as NextRequest).nextUrl.pathname;
     const isPrivate = privateRoutes.some((r) => path.startsWith(r));
@@ -24,5 +24,5 @@ export const proxy = auth((request) => {
 });
 
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+    matcher: ["/((?!api/auth|_next/static|_next/image|favicon.ico).*)"],
 };
