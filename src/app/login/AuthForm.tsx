@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { loginAction, registerAction } from "./actions";
+import { signIn} from "next-auth/react"
 
 type Mode = "login" | "register";
 
@@ -46,21 +47,19 @@ export default function AuthForm() {
             </div>
 
             {mode === "login" ? (
-                <form action={loginDispatch} className="flex flex-col gap-3">
+                <><form action={loginDispatch} className="flex flex-col gap-3">
                     <input
                         name="email"
                         type="email"
                         placeholder="Email"
                         required
-                        className={inputCls}
-                    />
+                        className={inputCls} />
                     <input
                         name="password"
                         type="password"
                         placeholder="Mot de passe"
                         required
-                        className={inputCls}
-                    />
+                        className={inputCls} />
                     {error && <ErrorMsg>{error}</ErrorMsg>}
                     <button
                         type="submit"
@@ -69,7 +68,9 @@ export default function AuthForm() {
                     >
                         {loginPending ? "Connexion..." : "Se connecter"}
                     </button>
-                </form>
+                </form><button onClick={() => signIn("github", { callbackUrl: "/swipe" })}>
+                        Se connecter avec GitHub
+                    </button></>
             ) : (
                 <form action={registerDispatch} className="flex flex-col gap-3">
                     <input
