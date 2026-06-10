@@ -30,14 +30,35 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
     const [isRefilling, setIsRefilling] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [refillError, setRefillError] = useState<string | null>(null);
+    const [trailerError, setTrailerError] = useState<string | null>(null);
     const lastRefillSignatureRef = useRef<string | null>(null);
 
     const topMovie = movies[0];
 
     const resetDrag = () => setDrag(initialDragState);
 
-    const openTrailer = (tmdbId: number) => {
-        window.open(`/api/movies/trailer?tmdbId=${tmdbId}`, "_blank", "noopener,noreferrer");
+    const openTrailer = async (tmdbId: number) => {
+        setTrailerError(null);
+
+        try {
+            const response = await fetch(`/api/movies/trailer?tmdbId=${tmdbId}`, {
+                redirect: "manual",
+            });
+
+            if (response.type === "opaqueredirect") {
+                window.open(`/api/movies/trailer?tmdbId=${tmdbId}`, "_blank", "noopener,noreferrer");
+                return;
+            }
+
+            if (response.status === 404) {
+                setTrailerError("Aucune bande-annonce trouvée pour ce film.");
+                return;
+            }
+
+            setTrailerError("Impossible d'ouvrir la bande-annonce.");
+        } catch {
+            setTrailerError("Impossible d'ouvrir la bande-annonce.");
+        }
     };
 
     useEffect(() => {
@@ -129,6 +150,7 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
         if (isSaving || !topMovie) return;
 
         setError(null);
+        setTrailerError(null);
         event.currentTarget.setPointerCapture(event.pointerId);
         setDrag({
             active: true,
@@ -159,7 +181,7 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
             resetDrag();
 
             if (topMovie) {
-                openTrailer(topMovie.id);
+                void openTrailer(topMovie.id);
             }
 
             return;
@@ -288,6 +310,12 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
             {refillError && (
                 <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
                     {refillError}
+                </p>
+            )}
+
+            {trailerError && (
+                <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                    {trailerError}
                 </p>
             )}
         </div>
