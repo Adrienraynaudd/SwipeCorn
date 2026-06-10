@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getMovieDetails } from "@/lib/tmdb";
@@ -41,5 +42,7 @@ export async function saveOnboardingMovies(formData: FormData) {
             )
     );
 
+    revalidatePath("/watchlist");
+    revalidatePath("/swipe");
     redirect("/swipe");
 }
