@@ -26,7 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
 function InfoBlock({ label, value }: Readonly<{ label: string; value: string }>) {
     return (
         <div className="rounded-xl bg-zinc-800/60 p-3">
-            <p className="text-xs text-zinc-500">{label}</p>
+            <p className="text-xs text-zinc-400">{label}</p>
             <p className="mt-0.5 text-sm font-medium text-white">{value}</p>
         </div>
     );
@@ -88,17 +88,17 @@ export default function MovieDetailLayout({
                             {movie.release_date && <span>{movie.release_date.slice(0, 4)}</span>}
                             {movie.runtime ? (
                                 <>
-                                    <span className="text-zinc-600">·</span>
+                                    <span className="text-zinc-500" aria-hidden="true">·</span>
                                     <span>{formatRuntime(movie.runtime)}</span>
                                 </>
                             ) : null}
                             {movie.vote_average > 0 && (
                                 <>
-                                    <span className="text-zinc-600">·</span>
+                                    <span className="text-zinc-500" aria-hidden="true">·</span>
                                     <span className="font-medium text-yellow-400">
                                         ⭐ {movie.vote_average.toFixed(1)}
                                         {movie.vote_count ? (
-                                            <span className="ml-1 font-normal text-zinc-500">
+                                            <span className="ml-1 font-normal text-zinc-400">
                                                 ({movie.vote_count.toLocaleString("fr-FR")})
                                             </span>
                                         ) : null}
@@ -124,7 +124,7 @@ export default function MovieDetailLayout({
 
                 {movie.overview && (
                     <div className="mt-6">
-                        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-zinc-500">Synopsis</h2>
+                        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-zinc-400">Synopsis</h2>
                         <p className="leading-relaxed text-zinc-300">{movie.overview}</p>
                     </div>
                 )}
@@ -154,7 +154,7 @@ export default function MovieDetailLayout({
                             />
                         )}
                         <div>
-                            <p className="text-xs text-zinc-500">Fait partie de</p>
+                            <p className="text-xs text-zinc-400">Fait partie de</p>
                             <p className="font-medium text-white">{movie.belongs_to_collection.name}</p>
                         </div>
                     </div>
@@ -162,7 +162,7 @@ export default function MovieDetailLayout({
 
                 {movie.production_companies && movie.production_companies.length > 0 && (
                     <div className="mt-6">
-                        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-zinc-500">Production</h2>
+                        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-zinc-400">Production</h2>
                         <p className="text-sm text-zinc-400">
                             {movie.production_companies.map((c) => c.name).join(" · ")}
                         </p>

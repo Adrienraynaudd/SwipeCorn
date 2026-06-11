@@ -81,12 +81,14 @@ export default function FilterableGrid({
             <div className="flex gap-3">
                 <input
                     type="text"
+                    aria-label="Rechercher un film"
                     placeholder="Rechercher un film..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none focus:border-yellow-400 transition"
+                    className="flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm text-white placeholder-zinc-400 outline-none focus:border-yellow-400 transition"
                 />
                 <select
+                    aria-label="Trier par"
                     value={sort}
                     onChange={(e) => setSort(e.target.value as Sort)}
                     className="rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-300 outline-none focus:border-yellow-400 transition"
@@ -116,7 +118,7 @@ export default function FilterableGrid({
                     {activeGenres.size > 0 && (
                         <button
                             onClick={() => setActiveGenres(new Set())}
-                            className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-500 transition hover:text-white"
+                            className="rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs text-zinc-400 transition hover:text-white"
                         >
                             Effacer
                         </button>
@@ -125,7 +127,7 @@ export default function FilterableGrid({
             )}
 
             {/* Compteur */}
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-zinc-400" aria-live="polite">
                 {filtered.length} film{filtered.length !== 1 ? "s" : ""}
                 {(search || activeGenres.size > 0) && movies.length !== filtered.length
                     ? ` sur ${movies.length}`
@@ -134,7 +136,7 @@ export default function FilterableGrid({
 
             {/* Grille ou état vide filtré */}
             {filtered.length === 0 ? (
-                <div className="py-16 text-center text-zinc-500">Aucun résultat</div>
+                <div className="py-16 text-center text-zinc-400">Aucun résultat</div>
             ) : (
                 <div className="grid grid-cols-8 gap-2">
                     {filtered.map((movie) => (
