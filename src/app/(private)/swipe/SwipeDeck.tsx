@@ -245,7 +245,7 @@ export default function SwipeDeck({ initialMovies }: { initialMovies: TmdbMovie[
                 })}
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-xs text-zinc-500">
+            <div className="mt-4 flex items-center justify-between text-xs text-zinc-400">
                 <span>Glisse a gauche pour passer</span>
                 <span>Glisse a droite pour liker</span>
             </div>

@@ -55,7 +55,7 @@ export default async function SwipePage() {
             ) : (
                 <div className="relative w-full max-w-sm">
                     <SwipeDeck initialMovies={movies} />
-                    <p className="mt-4 text-center text-xs text-zinc-600">
+                    <p className="mt-4 text-center text-xs text-zinc-400">
                         Clique sur la carte pour voir la bande-annonce
                     </p>
                 </div>
