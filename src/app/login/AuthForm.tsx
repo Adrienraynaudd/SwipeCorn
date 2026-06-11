@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { loginAction, registerAction } from "./actions";
+import { signIn} from "next-auth/react"
 
 type Mode = "login" | "register";
 
@@ -19,11 +20,12 @@ export default function AuthForm() {
         empty
     );
 
-    const pending = loginPending || registerPending;
+    const [githubPending, setGithubPending] = useState(false);
+    const pending = loginPending || registerPending || githubPending;
     const error = mode === "login" ? loginState?.error : registerState?.error;
 
     const inputCls =
-        "w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 outline-none focus:border-yellow-400 transition";
+        "w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-400 outline-none focus:border-yellow-400 transition";
 
     return (
         <div className="flex flex-col gap-5">
@@ -46,21 +48,19 @@ export default function AuthForm() {
             </div>
 
             {mode === "login" ? (
-                <form action={loginDispatch} className="flex flex-col gap-3">
+                <><form action={loginDispatch} className="flex flex-col gap-3">
                     <input
                         name="email"
                         type="email"
                         placeholder="Email"
                         required
-                        className={inputCls}
-                    />
+                        className={inputCls} />
                     <input
                         name="password"
                         type="password"
                         placeholder="Mot de passe"
                         required
-                        className={inputCls}
-                    />
+                        className={inputCls} />
                     {error && <ErrorMsg>{error}</ErrorMsg>}
                     <button
                         type="submit"
@@ -69,7 +69,17 @@ export default function AuthForm() {
                     >
                         {loginPending ? "Connexion..." : "Se connecter"}
                     </button>
-                </form>
+                </form><button
+                        type="button"
+                        disabled={pending}
+                        onClick={async () => {
+                            setGithubPending(true);
+                            await signIn("github", { callbackUrl: "/swipe" });
+                        }}
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-800 py-3 font-semibold text-white transition hover:bg-zinc-700 active:scale-95 disabled:opacity-50"
+                    >
+                        {githubPending ? "Redirection vers GitHub..." : "Se connecter avec GitHub"}
+                    </button></>
             ) : (
                 <form action={registerDispatch} className="flex flex-col gap-3">
                     <input

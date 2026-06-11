@@ -1,5 +1,7 @@
 import NextAuth, { type DefaultSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Github from "next-auth/providers/github"
+import {PrismaAdapter} from "@auth/prisma-adapter"
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { authConfig } from "@/auth.config";
@@ -10,10 +12,22 @@ declare module "next-auth" {
     }
 }
 
+const prismaAdapter = PrismaAdapter(db);
+const adapter = {
+    ...prismaAdapter,
+    createUser: ({ image, emailVerified, ...data }: Parameters<NonNullable<typeof prismaAdapter.createUser>>[0]) =>
+        prismaAdapter.createUser!(data as any),
+};
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
+    adapter,
     session: { strategy: "jwt" },
     providers: [
+        Github({
+            clientId : process.env.GITHUB_ID,
+            clientSecret: process.env.GITHUB_SECRET,
+        }),
         Credentials({
             credentials: {
                 email: { label: "Email", type: "email" },
@@ -23,9 +37,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 if (!credentials?.email || !credentials?.password) return null;
 
                 type UserRow = { id: string; name: string; email: string; password: string };
-                const user = await db.user.findUnique({
-                    where: { email: credentials.email as string },
-                }) as UserRow | null;
+
+                const user = await db.user.findUnique({  where: { email: credentials.email as string },  }) as UserRow | null;
 
                 if (!user) return null;
 

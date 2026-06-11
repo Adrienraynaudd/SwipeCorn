@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { getInitialStack } from "@/lib/tmdb";
 import SwipeDeck from "./SwipeDeck";
 
+export const dynamic = "force-dynamic";
+
 const NEGATIVE_SEED_LIMIT = 10;
 
 export default async function SwipePage() {
