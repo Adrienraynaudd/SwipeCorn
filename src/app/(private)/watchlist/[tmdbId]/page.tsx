@@ -22,7 +22,7 @@ export default async function MovieDetailPage({
                     type="submit"
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-800 py-3 text-sm font-medium text-zinc-300 transition hover:bg-zinc-700 active:scale-95"
                 >
-                    💔 Déplacer en Dislike
+                    <span aria-hidden="true">💔</span> Déplacer en Dislike
                 </button>
             </form>
             <form action={removeFromWatchlist.bind(null, tmdbId)} className="flex-1">
