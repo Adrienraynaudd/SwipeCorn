@@ -25,7 +25,7 @@ export default function AuthForm() {
     const error = mode === "login" ? loginState?.error : registerState?.error;
 
     const inputCls =
-        "w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 outline-none focus:border-yellow-400 transition";
+        "w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-400 outline-none focus:border-yellow-400 transition";
 
     return (
         <div className="flex flex-col gap-5">

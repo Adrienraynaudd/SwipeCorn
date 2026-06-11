@@ -97,7 +97,7 @@ export default function SetupForm() {
                     placeholder="Recherche un film..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-500 outline-none focus:border-yellow-400"
+                    className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-white placeholder-zinc-400 outline-none focus:border-yellow-400"
                 />
                 {searching && (
                     <div className="absolute right-3 top-3.5 text-zinc-400 text-sm">
