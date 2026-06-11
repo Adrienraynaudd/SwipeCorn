@@ -7,7 +7,7 @@ export default async function SetupPage() {
     const session = await auth();
     const userId = session!.user!.id!;
 
-    const count = await db.watchlistEntry.count({ where: { userId } });
+    const count = await db.swipe.count({ where: { userId, liked: true } });
     if (count > 0) redirect("/swipe");
 
     return (

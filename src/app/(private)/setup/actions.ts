@@ -28,14 +28,9 @@ export async function saveOnboardingMovies(formData: FormData) {
         movies
             .filter(Boolean)
             .map((m) =>
-                db.watchlistEntry.upsert({
+                db.swipe.upsert({
                     where: { userId_tmdbId: { userId, tmdbId: m!.id } },
-                    create: {
-                        userId,
-                        tmdbId: m!.id,
-                        title: m!.title,
-                        poster: m!.poster_path ?? null,
-                    },
+                    create: { userId, tmdbId: m!.id, liked: true },
                     update: {},
                 })
             )

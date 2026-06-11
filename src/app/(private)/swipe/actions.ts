@@ -17,48 +17,12 @@ export async function saveSwipe(input: unknown) {
         throw new Error(parsedInput.error.issues[0]?.message ?? "Payload invalide");
     }
 
-    const { liked, posterPath: poster, title, tmdbId } = parsedInput.data;
+    const { liked, tmdbId } = parsedInput.data;
 
-    await db.$transaction(async (tx) => {
-        await tx.swipe.upsert({
-            where: {
-                userId_tmdbId: {
-                    userId,
-                    tmdbId,
-                },
-            },
-            create: {
-                userId,
-                tmdbId,
-                liked,
-            },
-            update: {
-                liked,
-            },
-        });
-
-        if (!liked) {
-            return;
-        }
-
-        await tx.watchlistEntry.upsert({
-            where: {
-                userId_tmdbId: {
-                    userId,
-                    tmdbId,
-                },
-            },
-            create: {
-                userId,
-                tmdbId,
-                title: title!,
-                poster,
-            },
-            update: {
-                title: title!,
-                poster,
-            },
-        });
+    await db.swipe.upsert({
+        where: { userId_tmdbId: { userId, tmdbId } },
+        create: { userId, tmdbId, liked },
+        update: { liked },
     });
 
     return { ok: true };

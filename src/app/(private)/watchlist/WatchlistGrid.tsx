@@ -7,19 +7,13 @@ export default async function WatchlistGrid() {
     const session = await auth();
     const userId = session!.user!.id!;
 
-    const [entries, likedSwipes] = await Promise.all([
-        db.watchlistEntry.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }),
-        db.swipe.findMany({ where: { userId, liked: true }, select: { tmdbId: true } }),
-    ]);
+    const entries = await db.swipe.findMany({
+        where: { userId, liked: true },
+        select: { tmdbId: true },
+        orderBy: { createdAt: "asc" },
+    });
 
-    const allIds = [
-        ...new Set([
-            ...entries.map((e) => e.tmdbId),
-            ...likedSwipes.map((s) => s.tmdbId),
-        ]),
-    ];
-
-    const details = await Promise.all(allIds.map((id) => getMovieDetails(id)));
+    const details = await Promise.all(entries.map((e) => getMovieDetails(e.tmdbId)));
 
     const movies: MovieForGrid[] = details
         .filter(Boolean)

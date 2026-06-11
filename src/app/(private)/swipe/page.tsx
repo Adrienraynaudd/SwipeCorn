@@ -12,15 +12,14 @@ export default async function SwipePage() {
     const session = await auth();
     const userId = session!.user!.id!;
 
-    const [watchlist, swipes, likedSwipes, dislikedSwipes] = await Promise.all([
-        db.watchlistEntry.findMany({ where: { userId }, orderBy: { createdAt: "desc" } }),
-        db.swipe.findMany({ where: { userId }, select: { tmdbId: true } }),
+    const [likedSwipes, swipes, dislikedSwipes] = await Promise.all([
         db.swipe.findMany({
             where: { userId, liked: true },
             select: { tmdbId: true },
             orderBy: { createdAt: "desc" },
             take: NEGATIVE_SEED_LIMIT,
         }),
+        db.swipe.findMany({ where: { userId }, select: { tmdbId: true } }),
         db.swipe.findMany({
             where: { userId, liked: false },
             select: { tmdbId: true },
@@ -29,19 +28,15 @@ export default async function SwipePage() {
         }),
     ]);
 
-    if (watchlist.length === 0) redirect("/setup");
+    if (likedSwipes.length === 0) redirect("/setup");
 
-    const seenIds = new Set([
-        ...watchlist.map((w) => w.tmdbId),
-        ...swipes.map((s) => s.tmdbId),
-    ]);
+    const seenIds = new Set(swipes.map((s) => s.tmdbId));
 
-    const dislikedSeedIds = dislikedSwipes.map((swipe) => swipe.tmdbId);
+    const dislikedSeedIds = dislikedSwipes.map((s) => s.tmdbId);
     const dislikedSeedIdSet = new Set(dislikedSeedIds);
-    const positiveSeedIds = [...new Set([
-        ...watchlist.map((entry) => entry.tmdbId),
-        ...likedSwipes.map((swipe) => swipe.tmdbId),
-    ])].filter((id) => !dislikedSeedIdSet.has(id));
+    const positiveSeedIds = likedSwipes
+        .map((s) => s.tmdbId)
+        .filter((id) => !dislikedSeedIdSet.has(id));
 
     const movies = await getInitialStack(positiveSeedIds, seenIds, dislikedSeedIds);
 

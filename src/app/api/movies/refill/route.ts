@@ -29,17 +29,8 @@ export async function POST(request: Request) {
 
     const { excludeIds } = parsedBody.data;
 
-    const [watchlist, swipes, likedSwipes, dislikedSwipes] = await Promise.all([
-        db.watchlistEntry.findMany({
-            where: { userId },
-            select: { tmdbId: true },
-            orderBy: { createdAt: "desc" },
-            take: SEED_LIMIT,
-        }),
-        db.swipe.findMany({
-            where: { userId },
-            select: { tmdbId: true },
-        }),
+    const [swipes, likedSwipes, dislikedSwipes] = await Promise.all([
+        db.swipe.findMany({ where: { userId }, select: { tmdbId: true } }),
         db.swipe.findMany({
             where: { userId, liked: true },
             select: { tmdbId: true },
@@ -54,13 +45,12 @@ export async function POST(request: Request) {
         }),
     ]);
 
-    const watchlistIds = watchlist.map((entry) => entry.tmdbId);
-    const allSwipeIds = swipes.map((swipe) => swipe.tmdbId);
-    const likedSeedIds = likedSwipes.map((swipe) => swipe.tmdbId);
-    const dislikedSeedIds = dislikedSwipes.map((swipe) => swipe.tmdbId);
+    const allSwipeIds = swipes.map((s) => s.tmdbId);
+    const likedSeedIds = likedSwipes.map((s) => s.tmdbId);
+    const dislikedSeedIds = dislikedSwipes.map((s) => s.tmdbId);
     const dislikedSeedIdSet = new Set(dislikedSeedIds);
 
-    const seedIds = [...new Set([...likedSeedIds, ...watchlistIds])]
+    const seedIds = likedSeedIds
         .filter((id) => !dislikedSeedIdSet.has(id))
         .slice(0, SEED_LIMIT);
 
@@ -68,7 +58,7 @@ export async function POST(request: Request) {
         return Response.json([]);
     }
 
-    const seenIds = new Set([...excludeIds, ...watchlistIds, ...allSwipeIds]);
+    const seenIds = new Set([...excludeIds, ...allSwipeIds]);
     const movies = await getRecommendationStack(seedIds, seenIds, {
         limit: REFILL_BATCH_SIZE,
         dislikedSeedIds,
