@@ -23,7 +23,7 @@ export default function NavBar() {
                             key={href}
                             href={href}
                             className={`flex flex-col items-center gap-1 px-6 py-2 text-xs font-medium transition ${
-                                active ? "text-yellow-400" : "text-zinc-500 hover:text-zinc-300"
+                                active ? "text-yellow-400" : "text-zinc-400 hover:text-zinc-300"
                             }`}
                         >
                             <span className="text-xl">{icon}</span>
@@ -34,7 +34,7 @@ export default function NavBar() {
                 <form action={logout}>
                     <button
                         type="submit"
-                        className="flex flex-col items-center gap-1 px-6 py-2 text-xs font-medium text-zinc-500 transition hover:text-red-400"
+                        className="flex flex-col items-center gap-1 px-6 py-2 text-xs font-medium text-zinc-400 transition hover:text-red-400"
                     >
                         <span className="text-xl">🚪</span>{"Logout"}
                     </button>
